@@ -3,6 +3,9 @@ import sqlite3
 from src.loaders.csv_loader import CSVLoader
 from src.db.schema_manager import SchemaManager
 from src.db.db_writer import DBWriter
+from src.db.db_reader import DBReader
+from src.services.query_service import QueryService
+from src.llm.openai_adapter import OpenAIAdapter
 
 
 class CLIInterface:
@@ -13,6 +16,9 @@ class CLIInterface:
         self.connection = sqlite3.connect(db_path)
         self.schema_manager = SchemaManager(self.connection)
         self.db_writer = DBWriter(self.connection)
+        self.db_reader = DBReader(self.connection)
+        self.openai_adapter = OpenAIAdapter()
+        self.query_service = QueryService(self.schema_manager, self.openai_adapter, self.db_reader)
 
     def show_banner(self):
         print("=" * 60)
@@ -38,6 +44,7 @@ class CLIInterface:
             table_name = self.schema_manager.resolve_table(dataframe, new_table_name)
             column_mapping = self.schema_manager.build_column_mapping(dataframe)
             rows = self.db_writer.insert_dataframe(dataframe, table_name, column_mapping)
+            
 
             print("\nCSV loaded into database successfully.")
             print(f"Target table: {table_name}")
@@ -55,8 +62,8 @@ class CLIInterface:
             print("\nError: query cannot be empty.\n")
             return
 
-        print("\nReceived query:")
-        print(query)
+        result = self.query_service.run_query(query)
+        print(result)
         print()
 
     def run(self):
