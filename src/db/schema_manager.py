@@ -12,35 +12,45 @@ class SchemaManager:
 
     def __init__(self, connection):
         self.connection = connection
+    
+    def sanitize_identifier(self, name):
+        """Sanitize a table name or column name for SQLite usage."""
+        sanitized = str(name).strip().lower()
+        sanitized = re.sub(r"\s+", "_", sanitized)
+        sanitized = re.sub(r"[^a-zA-Z0-9_]", "_", sanitized)
+        sanitized = re.sub(r"_+", "_", sanitized).strip("_")
+
+        if not sanitized:
+            sanitized = "field"
+
+
+        return sanitized
+    
+    def build_column_mapping(self, dataframe):
+        """
+        Return a mapping from original DataFrame column names
+        to sanitized database column names.
+        """
+        mapping = {}
+
+        for column_name in dataframe.columns:
+            mapping[str(column_name)] = self.sanitize_identifier(column_name)
+
+        return mapping
 
     def make_table_name_from_csv_path(self, source_path):
 
         file_name = os.path.basename(source_path)
         base_name = os.path.splitext(file_name)[0]
-
-        table_name = base_name.strip().lower()
-        table_name = re.sub(r"\s+", "_", table_name)
-        table_name = re.sub(r"[^a-zA-Z0-9_]", "_", table_name)
-        table_name = re.sub(r"_+", "_", table_name).strip("_")
-
-        if not table_name:
-            table_name = "table" # make it random later
-
-        if table_name[0].isdigit():
-            table_name = f"table_{table_name}"
-
-        return table_name
+        return self.sanitize_identifier(base_name)
 
     def infer_dataframe_schema(self, dataframe) -> dict:
         """Infer schema from CSV headers only."""
+        mapping = self.build_column_mapping(dataframe)
         columns = []
 
-        for column_name in dataframe.columns:
-            columns.append(
-                {
-                    "name": str(column_name).strip(),
-                }
-            )
+        for sanitized_name in mapping.values():
+            columns.append({"name": sanitized_name})
 
         return {"columns": columns}
 
@@ -113,6 +123,7 @@ class SchemaManager:
         """
         matching_table = self.find_matching_table(dataframe)
         if matching_table is not None:
+            print(f"Table '{matching_table}' already exists. Data will be inserted into this table.")
             return matching_table
 
         self.create_table_from_dataframe(dataframe, new_table_name)
@@ -143,3 +154,13 @@ class SchemaManager:
         if pd.api.types.is_bool_dtype(series):
             return "INTEGER"
         return "TEXT"
+    
+    def get_table_columns(self, table_name):
+        """Return the already-sanitized column names of a table."""
+        cursor = self.connection.execute(f'PRAGMA table_info("{table_name}")')
+        rows = cursor.fetchall()
+
+        if not rows:
+            raise ValueError(f"Table '{table_name}' does not exist.")
+
+        return [row[1] for row in rows]
