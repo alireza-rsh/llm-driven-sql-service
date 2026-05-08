@@ -54,6 +54,9 @@ llm-driven-sql-service/
 │   │   ├── interface.py
 │   │   └── csv_loader.py
 │   └── services/
+
+## Video Link
+https://drive.google.com/file/d/1PFubX_CYj1p-xOB8N3vgwK126mkM2VvN/view?usp=sharing
 │       └── query_service.py
 └── tests/
     ├── test_csv_loader.py
