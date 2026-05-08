@@ -60,5 +60,3 @@ llm-driven-sql-service/
     └── ...
 
 ```
-## Video Link
-https://drive.google.com/file/d/1PFubX_CYj1p-xOB8N3vgwK126mkM2VvN/view?usp=sharing
